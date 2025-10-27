@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atlas AI Travel Assistant</title>
+    <style>
+        /* Base styles */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 10px; box-sizing: border-box; }
+        .chat-container { width: 100%; max-width: 650px; background-color: #fff; border-radius: 15px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1); display: flex; flex-direction: column; height: 90vh; max-height: 800px; /* Added max-height */ overflow: hidden; border: 1px solid #e0e0e0; }
+        .chat-header { background: linear-gradient(135deg, #007bff, #0056b3); color: white; padding: 18px; text-align: center; font-size: 1.3em; font-weight: bold; border-top-left-radius: 15px; border-top-right-radius: 15px; letter-spacing: 0.5px; }
+        .chat-window { flex-grow: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; background-color: #ffffff; /* Explicit background */ }
+        .message { margin-bottom: 12px; padding: 10px 16px; border-radius: 20px; max-width: 85%; position: relative; word-wrap: break-word; line-height: 1.5; font-size: 0.95em; }
+        .user-message { align-self: flex-end; background-color: #dcf8c6; color: #303030; border-bottom-right-radius: 5px; box-shadow: 0 1px 1px rgba(0,0,0,0.05); }
+        .assistant-message { align-self: flex-start; background-color: #f1f3f4; color: #303030; border-bottom-left-radius: 5px; box-shadow: 0 1px 1px rgba(0,0,0,0.05); }
+        .chat-input { display: flex; padding: 15px; border-top: 1px solid #e0e0e0; background-color: #f8f9fa; align-items: center; /* Vertically align items */ }
+        .chat-input input { flex-grow: 1; padding: 12px 18px; border: 1px solid #ced4da; border-radius: 25px; margin-right: 10px; font-size: 1em; outline: none; transition: border-color 0.2s; }
+        .chat-input input:focus { border-color: #007bff; }
+        .chat-input button { background-color: #007bff; color: white; border: none; padding: 12px 20px; border-radius: 25px; cursor: pointer; transition: background-color 0.3s; font-size: 1em; font-weight: bold; }
+        .chat-input button:hover { background-color: #0056b3; }
+        .chat-input button:disabled { background-color: #a0cfff; cursor: not-allowed; } /* Style for disabled button */
+        /* Removed thread-info styling */
+        .typing-indicator { font-style: italic; color: #6c757d; margin: 5px 0 10px; padding: 8px 15px; align-self: flex-start; animation: blinker 1.3s linear infinite; font-size: 0.9em; background-color: #f1f3f4; border-radius: 15px; border-bottom-left-radius: 5px; }
+        @keyframes blinker { 50% { opacity: 0.6; } }
+        /* Enhanced styles for formatted results */
+        .agent-results { margin-top: 10px; padding: 12px 15px; background-color: #e9ecef; border-radius: 8px; border: 1px solid #dee2e6; font-size: 0.9em; color: #495057; }
+        .agent-results h5 { margin-top: 0; margin-bottom: 10px; color: #0056b3; font-size: 1.05em; border-bottom: 1px solid #adb5bd; padding-bottom: 5px; }
+        .agent-results ul { list-style: none; padding-left: 0; margin-bottom: 0; }
+        .agent-results li { margin-bottom: 7px; padding-left: 10px; border-left: 3px solid #007bff; /* Add a visual indicator */ }
+        .agent-results strong { color: #212529; }
+        .agent-results a { color: #0056b3; text-decoration: none; font-weight: bold; }
+        .agent-results a:hover { text-decoration: underline; color: #003d80; }
+        .error { color: #dc3545; font-weight: bold; background-color: #f8d7da; padding: 8px; border-radius: 5px; border: 1px solid #f5c6cb; }
+        .text-response { margin-bottom: 8px; }
+        .itinerary-day { margin-bottom: 12px; padding-left: 5px;}
+        .itinerary-day strong.day-label { display: block; margin-bottom: 6px; color: #495057; font-size: 1.05em; }
+        .itinerary-day ul { padding-left: 18px; list-style: disc; margin-top: 4px; }
+        .itinerary-day li { margin-bottom: 5px; }
+        .itinerary-day i { color: #6c757d; font-size: 0.9em; }
+        pre { background-color: #f8f9fa; padding: 10px; border-radius: 5px; border: 1px solid #ced4da; overflow-x: auto; font-size: 0.85em; }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+
+    <div class="chat-container">
+        <div class="chat-header">
+            ✈️ Atlas Travel Assistant
+        </div>
+
+        <div class="chat-window" id="chat-window">
+            </div>
+
+        <div class="chat-input">
+            <input type="text" id="user-input" placeholder="Plan a flight, hotel, car, or itinerary..." autofocus>
+            <button id="send-button">Send</button>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            const chatWindow = document.getElementById('chat-window');
+            const userInput = document.getElementById('user-input');
+            const sendButton = document.getElementById('send-button');
+            // Removed sessionStatusDisplay related code
+
+            // Display initial greeting
+            displayMessage("Hello! I'm Atlas, your AI Travel Planner. How can I help you plan your trip today? (e.g., 'Plan a trip to Mumbai', 'Find flights from Delhi to Goa')", 'assistant');
+
+            function scrollToBottom() {
+                // Add a small delay to ensure rendering completes before scrolling
+                setTimeout(() => { chatWindow.scrollTop = chatWindow.scrollHeight; }, 50);
+            }
+
+            // More Robust Formatting Function
+             function formatAgentResults(data) {
+                 if (!data || typeof data !== 'object') { return '<p><i>(Received invalid structured data)</i></p>'; }
+
+                let html = '<div class="agent-results">';
+                if (!data.status) {
+                     html += '<p>Agent data structure is missing status.</p>';
+                     console.warn("Agent data missing status:", data);
+                     return html + '</div>';
+                 }
+
+                if (data.status === 'success' && data.results) {
+                    const results = data.results;
+                    // Flight Results Formatting
+                    if (Array.isArray(results) && results.length > 0 && results[0]?.flight_number) {
+                        html += '<h5>✈️ Flight Options:</h5><ul>';
+                        results.slice(0, 5).forEach(f => { // Show up to 5
+                            const departureTime = f.departure ? (f.departure.split('T')[1]?.substring(0,5) || f.departure.split(' ')[1]?.substring(0,5) || 'N/A') : 'N/A';
+                            html += `<li><strong>${f.airline || 'N/A'} ${f.flight_number || ''}</strong>: ₹${f.price || 'N/A'} (Departs: ${departureTime})</li>`;
+                        });
+                        html += '</ul>';
+                    }
+                    // Hotel Results Formatting
+                    else if (Array.isArray(results) && results.length > 0 && results[0]?.price_per_night) {
+                        html += '<h5>🏨 Hotel Options:</h5><ul>';
+                        results.slice(0, 5).forEach(h => {
+                             html += `<li><strong>${h.name || 'N/A'}</strong>`;
+                             if (h.rating) html += `: ⭐ ${h.rating}`;
+                             if (h.price_per_night) html += ` (~₹${h.price_per_night}/night)`;
+                             if(h.link && h.link.startsWith('http')) {
+                                 html += ` <a href="${h.link}" target="_blank" rel="noopener noreferrer">[Search Online]</a>`;
+                             }
+                             html += `</li>`;
+                        });
+                        html += '</ul>';
+                    }
+                    // Car Results Formatting
+                    else if (Array.isArray(results) && results.length > 0 && (results[0]?.daily_rate || results[0]?.price_per_hour)) {
+                        html += '<h5>🚗 Car Rental Options:</h5><ul>';
+                        results.slice(0, 5).forEach(c => {
+                            const dailyRate = c.daily_rate || (c.price_per_hour ? c.price_per_hour * 24 : 'N/A');
+                            html += `<li><strong>${c.name || c.model || 'N/A'}</strong> (${c.type || 'N/A'}, Seats: ${c.capacity || 'N/A'}) - ~₹${dailyRate}/day`;
+                            if (c.total_cost_for_trip) {
+                                html += ` (Est. Total: ₹${c.total_cost_for_trip})`;
+                            }
+                            html += `</li>`;
+                        });
+                        html += '</ul>';
+                    }
+                    // Itinerary Results Formatting
+                    else if (typeof results === 'object' && Object.keys(results).length > 0 && Object.keys(results)[0].toLowerCase().startsWith('day')) {
+                         html += '<h5>🗺️ Proposed Itinerary:</h5>';
+                         Object.entries(results).forEach(([day, activities]) => {
+                            if(Array.isArray(activities) && activities.length > 0) {
+                                const dayLabelMatch = day.match(/Day \d+ \((.*)\)/);
+                                const dayDate = dayLabelMatch ? dayLabelMatch[1] : day.replace('Day ', 'Day');
+
+                                html += `<div class="itinerary-day"><strong class="day-label">${dayDate}:</strong><ul>`;
+                                activities.forEach(act => {
+                                    html += `<li>[${act.time || 'Time N/A'}] <strong>${act.name || 'Activity'}</strong>`;
+                                    let details = [];
+                                    if(act.type) details.push(`<i>(${act.type})</i>`);
+                                    if(act.duration && act.duration !== "N/A") details.push(`~${act.duration}`);
+                                    if(act.cost && act.cost !== "N/A" && act.cost !== "Free" && act.cost !== "Variable") details.push(`Cost: ${act.cost}`);
+                                    else if (act.cost === "Free") details.push("Free");
+
+                                    if (details.length > 0) html += ` - ${details.join(', ')}`;
+                                    html += `</li>`;
+                                });
+                                html += '</ul></div>';
+                            } else {
+                                 html += `<div class="itinerary-day"><strong class="day-label">${day}:</strong><ul><li>No specific activities planned.</li></ul></div>`;
+                            }
+                         });
+                         // Add a check in case the object was structured differently
+                         if (html === '<h5>🗺️ Proposed Itinerary:</h5>') {
+                            html += '<p>Received itinerary data, but could not format days.</p><pre><code>' + JSON.stringify(results, null, 2) + '</code></pre>';
+                         }
+                    }
+                    // Fallback for successful status but unrecognized results structure
+                     else {
+                         html += '<p>Found results:</p><pre><code>' + JSON.stringify(results, null, 2) + '</code></pre>';
+                         console.log("Formatted successful results as fallback:", results);
+                    }
+                } else if (data.status === 'error') {
+                    html += `<p class="error">⚠️ Agent Error: ${data.message || 'Unknown error reported by the agent.'}</p>`;
+                } else if (data.status === 'success' && (!data.results || (Array.isArray(data.results) && data.results.length === 0) || (typeof data.results === 'object' && Object.keys(data.results).length === 0) ) ) {
+                     // More robust check for empty results
+                     html += '<p>✅ The search was successful, but no results matched your specific criteria.</p>';
+                } else {
+                     html += '<p>Received an unexpected response structure from the agent.</p>';
+                     console.log("Unexpected data structure:", data);
+                }
+                html += '</div>';
+                return html;
+            }
+
+
+            // Updated displayMessage
+            function displayMessage(text, sender, structuredData = null) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message ' + (sender === 'user' ? 'user-message' : 'assistant-message');
+
+                let content = '';
+                // Display Gemini's text response first
+                if (text && text.trim() !== '') {
+                     const sanitizedText = text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                     // Basic markdown for bolding (**text**)
+                     const boldedText = sanitizedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                     content += `<div class="text-response">${boldedText.replace(/\n/g, '<br>')}</div>`;
+                }
+
+                // If structured data exists from a tool call, format and append it
+                if (sender === 'assistant' && structuredData) {
+                    content += formatAgentResults(structuredData);
+                }
+
+                 if (!content) { // If both text and structured data are missing/empty
+                     content = '<p><i>(Received an empty response)</i></p>';
+                 }
+
+                messageDiv.innerHTML = content;
+                chatWindow.appendChild(messageDiv);
+                scrollToBottom();
+            }
+
+
+            function showTypingIndicator(show) {
+                 let indicator = document.getElementById('typing-indicator');
+                if (show) {
+                    if (!indicator) {
+                        indicator = document.createElement('div');
+                        indicator.id = 'typing-indicator';
+                        indicator.className = 'typing-indicator';
+                        indicator.textContent = 'Atlas is typing...';
+                        chatWindow.appendChild(indicator);
+                        scrollToBottom();
+                    }
+                } else {
+                    if (indicator) {
+                        indicator.remove();
+                    }
+                }
+            }
+
+            // Updated sendMessage
+            function sendMessage() {
+                const message = userInput.value.trim();
+                if (message === "") return;
+
+                displayMessage(message, 'user');
+                userInput.value = '';
+                showTypingIndicator(true);
+                sendButton.disabled = true; // Disable button during request
+
+                const payload = { message: message };
+
+                $.ajax({
+                    url: '/chat',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(payload),
+                    success: function(data) {
+                        showTypingIndicator(false);
+                        sendButton.disabled = false; // Re-enable button
+
+                        const responseText = data.response;
+                        const structuredResult = data.structured_data;
+
+                        displayMessage(responseText, 'assistant', structuredResult);
+
+                        // Removed threadId update logic
+                    },
+                    error: function(xhr, status, error) {
+                        showTypingIndicator(false);
+                        sendButton.disabled = false; // Re-enable button on error
+                        displayMessage("Sorry, I encountered a connection or server error. Please check the logs or try again later.", 'assistant');
+                        console.error("AJAX Error:", status, error, xhr.responseText);
+                    }
+                });
+            }
+
+            // Event listeners
+            sendButton.addEventListener('click', sendMessage);
+            userInput.addEventListener('keypress', function(event) {
+                 if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault();
+                    sendMessage();
+                }
+            });
+
+             userInput.focus(); // Set focus on load
+
+        }); // End of document.ready
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,67 @@
+# This file holds our mock database of all available vehicles
+
+VEHICLE_DATABASE = [
+    {
+        "id": "V101",
+        "name": "Maruti Swift",
+        "type": "car",
+        "location": "Delhi",
+        "capacity": 4,
+        "price_per_hour": 15,
+        "available": True,
+    },
+    {
+        "id": "V102",
+        "name": "Toyota Innova",
+        "type": "suv",
+        "location": "Delhi",
+        "capacity": 7,
+        "price_per_hour": 25,
+        "available": True,
+    },
+    {
+        "id": "V103",
+        "name": "Honda Activa",
+        "type": "bike",
+        "location": "Delhi",
+        "capacity": 2,
+        "price_per_hour": 5,
+        "available": True,
+    },
+    {
+        "id": "V104",
+        "name": "Hyundai i20",
+        "type": "car",
+        "location": "Mumbai",
+        "capacity": 4,
+        "price_per_hour": 18,
+        "available": True,
+    },
+    {
+        "id": "V105",
+        "name": "Royal Enfield",
+        "type": "bike",
+        "location": "Mumbai",
+        "capacity": 2,
+        "price_per_hour": 10,
+        "available": False, # This one is not available
+    },
+    {
+        "id": "V106",
+        "name": "Tata Nexon",
+        "type": "suv",
+        "location": "Delhi",
+        "capacity": 5,
+        "price_per_hour": 22,
+        "available": True,
+    },
+    {
+        "id": "V107",
+        "name": "Bajaj Pulsar",
+        "type": "bike",
+        "location": "Delhi",
+        "capacity": 1,
+        "price_per_hour": 6,
+        "available": True,
+    },
+]
