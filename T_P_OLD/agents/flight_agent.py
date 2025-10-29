@@ -37,23 +37,27 @@ def generate_mock_flights(source: str, destination: str, date: str):
         # Generate a random departure time
         base_time = datetime.strptime(date, "%Y-%m-%d")
         departure_dt = base_time + timedelta(
-            hours=random.randint(5, 22), 
+            hours=random.randint(5, 22),
             minutes=random.choice([0, 15, 30, 45])
         )
         
         # Generate random price
         price = random.randint(4500, 20000)
-        
+
+        # ✅ FIX: Include both 'departure' and 'departure_time'
+        departure_str = departure_dt.strftime("%Y-%m-%d %H:%M")
         results.append({
             "airline": airline,
             "flight_number": flight_num,
             "source": source.title(),
             "destination": destination.title(),
-            "departure": departure_dt.strftime("%Y-%m-%d %H:%M"),
+            "departure": departure_str,        # existing key
+            "departure_time": departure_str,   # new key for summary compatibility
             "price": price
         })
     
     return results
+
 
 # --- FastAPI Endpoint (The actual service) ---
 @app.post("/search_flights")

@@ -3,7 +3,7 @@ import requests
 import json
 from dotenv import load_dotenv
 import google.generativeai as genai
-from datetime import datetime
+from datetime import datetime, timedelta # <-- MODIFICATION: Added timedelta
 import sys # Import sys for exiting on critical error
 
 load_dotenv()
@@ -25,16 +25,45 @@ ITINERARY_URL = os.getenv("ITINERARY_AGENT_URL", "http://localhost:8003/plan_iti
 
 # --- TOOL IMPLEMENTATION (Functions remain the same) ---
 def search_flights(source: str, destination: str, date: str) -> str:
+    """
+    Searches for flights with date validation.
+    1. Validates YYYY-MM-DD format.
+    2. Checks if date is in the past.
+    3. Checks if date is more than 60 days in the future.
+    """
     try:
-        # Basic date format validation before calling agent
-        datetime.strptime(date, '%Y-%m-%d')
+        # 1. Validate date format
+        try:
+            input_date = datetime.strptime(date, '%Y-%m-%d').date()
+        except ValueError:
+             print(f"TOOL Error: Invalid date format '{date}' received for search_flights. Expected YYYY-MM-DD.")
+             return json.dumps({"status": "error", "message": f"Invalid date format '{date}'. Please use YYYY-MM-DD."})
+
+        # 2. Check date range
+        today = datetime.now().date()
+        max_date = today + timedelta(days=60)
+
+        if input_date < today:
+            print(f"TOOL Error: Flight date '{date}' is in the past.")
+            return json.dumps({"status": "error", "message": f"Cannot book flight for a past date ({date})."})
+        
+        if input_date > max_date:
+            print(f"TOOL Error: Flight date '{date}' is more than 60 days away.")
+            # Return the specific message you requested
+            return json.dumps({"status": "error", "message": "no flights scheduled for given departure date"})
+
+        # 3. If validation passes, call the agent
         response = requests.post(FLIGHT_URL, json={"source": source, "destination": destination, "date": date}, timeout=10)
         response.raise_for_status()
         return json.dumps(response.json())
-    except ValueError:
-         print(f"TOOL Error: Invalid date format '{date}' received for search_flights. Expected YYYY-MM-DD.")
-         return json.dumps({"status": "error", "message": f"Invalid date format '{date}'. Please use YYYY-MM-DD."})
-    except Exception as e: return json.dumps({"status": "error", "message": f"Flight agent connection error: {e}"})
+
+    except requests.exceptions.RequestException as e:
+        # Catch errors from the requests call (e.g., connection, timeout)
+        return json.dumps({"status": "error", "message": f"Flight agent connection error: {e}"})
+    except Exception as e: 
+        # Catch any other unexpected errors
+        return json.dumps({"status": "error", "message": f"An unexpected error occurred: {e}"})
+# --- END MODIFIED FUNCTION ---
 
 def search_hotels(city: str, check_in: str, check_out: str, budget: str = None, room_preference: str = None) -> str:
     payload = {"city": city, "check_in": check_in, "check_out": check_out}
