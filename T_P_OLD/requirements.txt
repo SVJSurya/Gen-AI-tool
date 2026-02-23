@@ -1,4 +1,13 @@
 Flask
 requests
 python-dotenv
+
 google-generativeai  
+
+
+What LSF is: Imagine a city power grid. The grid operator sees demand (people turning on appliances) and supply (power plants). It routes electricity fairly and reliably. LSF is that operator for a compute grid (a cluster of servers). Users “plug in” by submitting jobs; LSF decides who runs where and when. [ibm.com]
+What it manages:
+Which server? how many cores? how much memory? does it need a GPU? how long can it run?—LSF answers these, enforcing rules so no one hogs the system and urgent work gets priority. [ibm.com]
+Fairness & priorities: LSF can treat some users/teams as “critical services” (bigger share), others as normal (smaller share), and it adjusts priority dynamically based on recent usage so the system stays fair over time. [ibm.com], [bsc.es]
+Using idle gaps efficiently: If a large job is waiting until enough nodes free up, LSF lets short jobs backfill the temporarily idle slots—like letting motorcycles zip through traffic gaps without delaying buses. [ibm.com]
+Electrical power angle: To save electricity, LSF can suspend idle hosts, resume them when demand rises, and even tune CPU frequency to balance speed vs. energy—like dimming streetlights during off-peak hours and brightening when needed. [ibm.com], [bsc.es]
