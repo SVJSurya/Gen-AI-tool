@@ -11,3 +11,114 @@ Which server? how many cores? how much memory? does it need a GPU? how long can 
 Fairness & priorities: LSF can treat some users/teams as “critical services” (bigger share), others as normal (smaller share), and it adjusts priority dynamically based on recent usage so the system stays fair over time. [ibm.com], [bsc.es]
 Using idle gaps efficiently: If a large job is waiting until enough nodes free up, LSF lets short jobs backfill the temporarily idle slots—like letting motorcycles zip through traffic gaps without delaying buses. [ibm.com]
 Electrical power angle: To save electricity, LSF can suspend idle hosts, resume them when demand rises, and even tune CPU frequency to balance speed vs. energy—like dimming streetlights during off-peak hours and brightening when needed. [ibm.com], [bsc.es]
+
+IBM Spectrum LSF: A Practical Primer (2 pages)
+1) What LSF is—in plain English
+Think of LSF as the grid operator for compute power. Users “plug in” by submitting jobs (programs to run). LSF looks at demand (how many cores, how much memory/GPU is needed) and supply (what servers are free), then routes work to the right machines at the right time using rules that keep things fair and efficient. Like a power grid, it prevents anyone from hogging the system, gives urgent workloads precedence, and keeps the “lines” busy (high utilization) without causing brownouts. [staff.uni-mainz.de]
+What it manages:
+
+Compute (CPU cores/threads), memory, GPUs, run time, and even licenses/reservations, based on job requests and policy. [staff.uni-mainz.de]
+Fairness & priorities: LSF dynamically prioritizes users and teams using fairshare so access is balanced over time, not just first‑come‑first‑served. 2 [ibm.com]
+Closing idle gaps: With backfill, LSF lets short jobs use processors that are temporarily idle while a large parallel job is collecting enough capacity to start—without delaying that large job. [glue.umd.edu]
+
+
+2) The professional view—what’s under the hood
+LSF is a policy‑driven batch scheduler. The key daemons are:
+
+mbatchd (job manager) & mbschd (scheduler): decide what runs where/when based on queue priority, fairshare, SLAs, preemption, backfill, and resource requirements. [yumpu.com], [staff.uni-mainz.de]
+sbatchd / res on each exec host: launch and monitor jobs. lim reports host load; pim tracks per‑job CPU/memory usage for accounting and decisions. [yumpu.com], [hpc.dtu.dk]
+
+Diagram—Architecture & Job Flow
+
+Scheduling building blocks
+
+Queue priority & FCFS: LSF evaluates queues top‑down; within a queue jobs are FCFS unless other policies apply. [staff.uni-mainz.de]
+Fairshare: Assign shares to users/groups; priorities drift based on recent usage to meet long‑term fairness goals. Host‑ or queue‑level; hierarchical/cross‑queue supported. 2 [ibm.com]
+SLA scheduling: Meet just‑in‑time service goals for agreed workloads. [staff.uni-mainz.de]
+Preemption: Let premium/urgent work preempt lower‑priority jobs under policy. [staff.uni-mainz.de]
+Backfilling: Keep CPUs busy while large jobs are reserving slots; requires run limits. [glue.umd.edu]
+
+
+3) Submitting work with bsub—from “hello world” to GPUs & NUMA
+Layman examples
+
+
+Small CPU job:
+Shellbsub -q normal -n 1 -W 00:10 echo "hello LSF"Show more lines
+
+Run for 10 minutes max on 1 core in the normal queue. [us-prod.as...rosoft.com]
+
+
+
+Multi‑core job (e.g., compression, simulation):
+Shellbsub -q normal -n 8 -W 02:00 -R "rusage[mem=6G]" ./run.shShow more lines
+
+Ask for 8 cores and 6 GB RAM per core for up to 2 hours. [us-prod.as...rosoft.com]
+
+
+
+GPU job (e.g., model training):
+Shellbsub -q gpu -n 8 -W 02:00 -R "rusage[mem=6G, ngpus_excl_p=1]" ./train.shShow more lines
+
+Request 1 exclusive GPU and 8 CPU cores for staging/dataload. (Fields and queue names vary by site.) [us-prod.as...rosoft.com]
+
+
+
+Professional knobs you’ll use
+
+
+Resource requests (-R):
+
+Memory: rusage[mem=...] (per slot).
+Topology/affinity: bind tasks to NUMA/sockets/cores/threads to improve locality.
+Shellbsub -n 6 -R "span[hosts=1] affinity[core(1):distribute=pack]" myjobShow more lines
+
+Packs 6 tasks onto the fewest cores/sockets for cache locality; LSF can enforce via Linux cgroups to prevent overrun. [bsc.es], [support.sas.com]
+
+
+
+
+
+Queues: Encode policy (priority, run‑limits, backfill, preemption). Inspect with bqueues -l. [us-prod.as...rosoft.com]
+
+
+Job lifecycle & control: bjobs (status), bstop/bresume (suspend/resume), bmod (tweak pending jobs), bpeek (tail logs), bhist (history). [us-prod.as...rosoft.com], [scicomp.ethz.ch], [ibm.com]
+
+
+
+4) How LSF keeps the lights on—efficiency & fairness
+Backfill (utilization boost without delay)
+Idea: When a large parallel job needs, say, 512 cores, LSF reserves them as they free up. Meanwhile, short jobs can backfill the temporarily idle slices as long as they finish before the large job’s predicted start time. [glue.umd.edu]
+Diagram—Backfill timeline
+
+Fairshare (don’t let one team dominate)
+Idea: Assign shares to teams; LSF calculates a dynamic priority so that heavy recent users get lower priority for a while, and light users get a boost—averaging fairness over time. Configure at host or queue level; can be hierarchical or cross‑queue. 2 [ibm.com]
+
+5) Power in the electrical sense—Energy‑Aware Scheduling (optional)
+If energy cost matters, LSF can:
+
+Suspend/resume idle hosts automatically (policy‑driven). [bsc.es]
+Tune CPU frequency by job/queue/app and predict runtime vs. power, auto‑selecting the best trade‑off. Studies report ~12% energy savings under suitable workloads/policies. [bsc.es], [us-prod.as...rosoft.com]
+
+
+6) Quick role‑based checklists
+For users (day‑to‑day):
+
+Submit with bsub; pick the right queue and be explicit about cores/memory/GPU. [us-prod.as...rosoft.com]
+Use bjobs to watch; bpeek to stream logs; bhist for finished jobs. [us-prod.as...rosoft.com]
+For multi‑socket hosts or memory‑bound codes, consider affinity to bind tasks. [bsc.es]
+
+For admins/ops:
+
+Verify health with bhosts, lsload, lshosts. [us-prod.as...rosoft.com], [wwwuser.gwdguser.de], [ibm.com]
+Tune bparams (dispatch/accept intervals), queues, and fairshare trees. 2 [blog.csdn.net]
+Consider backfill and run‑limits to keep utilization high; add preemption for urgent queues. [glue.umd.edu], [staff.uni-mainz.de]
+If applicable, pilot EAS (host power states / CPU freq management). [bsc.es]
+
+
+7) Handy commands (recap)
+
+Submit & manage: bsub, bjobs, bkill, bmod, bstop/bresume, bpeek, bhist, brequeue, bswitch, bresize [us-prod.as...rosoft.com], [scicomp.ethz.ch], [ibm.com]
+Inspect cluster: bqueues, bhosts, lsload, lshosts, lsclusters, lsid, lsinfo, bparams, busers, bhpart [us-prod.as...rosoft.com], [wwwuser.gwdguser.de], [ibm.com], [blog.csdn.net], [support.sas.com], [ibm.github.io]
+Accounting & reservations: bacct, brsvadd, brsvs [bsc.es], [ibm.com]
+Admin: badmin, lsadmin
